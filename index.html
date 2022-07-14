@@ -1,0 +1,216 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no">
+
+	<title>SF Landmarks</title>
+
+	<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+		integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+	<script src="https://code.jquery.com/jquery-3.3.1.js"
+		integrity="sha256-2Kok7MbOyxpgUVvAk/HJ2jigOSYS2auK4Pfzbm7uH60=" crossorigin="anonymous">
+		</script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+		integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous">
+		</script>
+	<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+		integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous">
+		</script>
+
+	<link rel="stylesheet" href="https://js.arcgis.com/4.12/esri/css/main.css">
+	<script src="https://js.arcgis.com/4.12/"></script>
+	<script src="js/js.js"></script>
+	<style>
+		#wrapper {
+			padding-top: 80px;
+			position: absolute;
+			top: 0;
+			bottom: 0;
+			left: 0px;
+			right: 0;
+			background-color: rgb(13, 97, 144);
+		}
+
+		#header {
+			position: absolute;
+			top: 0;
+			bottom: 0;
+			left: 0;
+			right: 0;
+			height: 0px;
+			background-color: rgb(13, 97, 144);
+			color: white;
+			font-family: Tahoma, Geneva, sans-serif;
+			font-size: 20px;
+			padding-left: 20px;
+			padding-top: 10px;
+		}
+
+		#subheader {
+			position: absolute;
+			top: 40px;
+			bottom: 0;
+			left: 0;
+			right: 0;
+			height: 0px;
+			background-color: rgb(13, 97, 144);
+			color: white;
+			font-family: Tahoma, Geneva, sans-serif;
+			font-size: 15px;
+			padding-left: 20px;
+			padding-top: 10px;
+		}
+
+		#feedback {
+			position: absolute;
+			top: 32px;
+			bottom: 0px;
+			right: 0px;
+			background-color: rgb(13, 97, 144);
+			color: white;
+			font-family: Tahoma, Geneva, sans-serif;
+			font-size: 14px;
+			padding-left: 0px;
+			padding-top: 0px;
+			padding-right: 5px;
+		}
+
+		#feedback A:Link {
+			color: #66ccff;
+			text-decoration: underline;
+			font-weight: normal;
+		}
+
+		#feedback A:visited {
+			color: #66ccff;
+			text-decoration: underline;
+			font-weight: normal;
+		}
+
+		html,
+		body,
+		#map {
+			padding: 0;
+			margin: 0;
+			height: 100%;
+			position: relative;
+		}
+
+		#search {
+			display: block;
+			position: absolute;
+			z-index: 2;
+			top: 113px;
+			left: 74px;
+		}
+
+		#checkboxes {
+			display: block;
+			position: absolute;
+			z-index: 2;
+			top: 180px;
+			left: 20px;
+			background-color: white;
+			border: 1px solid navy;
+			padding: 15px;
+			border-radius: 5px;
+			font-family: Tahoma, Geneva, sans-serif;
+			font-size: 15px;
+		}
+
+		table th {
+			background-color: rgb(13, 97, 144);
+			color: #fff;
+			text-align: center;
+		}
+	</style>
+
+
+</head>
+
+<body>
+	<div id="wrapper">
+		<div id="header">San Francisco Historic Landmarks Map</div>
+		<div id="subheader">San Francisco Planning Department &nbsp;
+
+		</div>
+		<div id="feedback">
+			<table border=0>
+				<tr>
+					<!-- <button type="button" data-toggle="modal" data-target="#exampleModal">
+						Launch demo modal
+					</button> -->
+					<td style='width:240px;text-align:center;'><a onclick='feedback()'
+							href='javascript:void(0)'>Your Feedback</a><br>Tell us what you
+						think about this map</td>
+					<td style='vertical-align: top;'>
+						<!--<a target='_blank' href='http://ec2-50-17-237-182.compute-1.amazonaws.com/preservation/NCD/?maximized=true'> <img id='maximize' title='Click to maximize map.' height='20px' src='maximize.png'></a>-->
+					</td>
+				</tr>
+				<!--<tr><td style='height:25px;text-align:center;'><a target='_blank' href='https://data.sfgov.org/Geographic-Locations-and-Boundaries/Privately-Owned-Public-Open-Space-POPOS-and-Public/55um-v9vc'>Get Map Data</a></td><td></td></tr>-->
+			</table>
+		</div>
+
+
+		<div id="search"></div>
+
+		<div id="map" class="map">
+
+		</div>
+		<div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
+			aria-hidden="true">
+			<div class="modal-dialog" role="document">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title" id="exampleModalLabel">Feedback Form</h5>
+						<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+							<span aria-hidden="true">&times;</span>
+						</button>
+					</div>
+					<div class="modal-body">
+						<form id="feedback-form" onsubmit="sendFeedBack()">
+
+							<div class="form-group">
+								<label for="inputName">Name</label>
+								<input type="text" class="form-control" id="inputName" placeholder="Name">
+							</div>
+
+							<div class="form-group">
+								<label for="inputSubject">Subject</label>
+								<input type="text" class="form-control" id="inputSubject"
+									placeholder="Subject of Concern">
+							</div>
+
+							<div class="form-group">
+								<label for="inputEmail">Email address</label>
+								<input type="email" class="form-control" id="inputEmail" aria-describedby="emailHelp"
+									placeholder="Enter email">
+							</div>
+							<div class="form-group">
+								<label for="feedbackMessage">Feedback</label>
+								<textarea class="form-control" id="feedbackMessage" rows="3"></textarea>
+							</div>
+
+							<div class="instructions">
+								If you would like to send a screen shot of an error you encountered, please send it to
+								CPC.GIS@sfgov.org
+							</div>
+							<!-- <input type="submit" value="Submit"> -->
+						</form>
+					</div>
+					<div class="modal-footer">
+						<button class="btn btn-primary" id="form-submit-button">Submit</button>
+
+						<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+</body>
+
+</html>

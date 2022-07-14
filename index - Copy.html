@@ -1,0 +1,325 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no">
+  <LINK REL="SHORTCUT ICON" HREF="favicon-03.ico">
+  <title>SF Landmarks</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/3.15/esri/css/esri.css">
+  <style>
+	#wrapper {padding-top:80px; position:absolute; top:0; bottom:0; left:0px; right:0;background-color:rgb(13, 97, 144);}
+	#header {position:absolute;  top:0; bottom:0; left:0; right:0;height:0px;background-color:rgb(13, 97, 144);color:white; font-family:Tahoma, Geneva, sans-serif; font-size: 20px;padding-left:20px; padding-top:10px; }
+	#subheader {position:absolute; top:40px; bottom:0; left:0; right:0;height:0px;background-color:rgb(13, 97, 144);color:white; font-family:Tahoma, Geneva, sans-serif; font-size: 15px;padding-left:20px; padding-top:10px; }
+	
+	#feedback {position:absolute; top:32px; bottom:0px;right:0px;background-color:rgb(13, 97, 144);color:white; font-family:Tahoma, Geneva, sans-serif; font-size: 14px;padding-left:0px; padding-top:0px;padding-right:5px; }
+	#feedback  A:Link {
+		color: #66ccff;
+		text-decoration: underline;
+		font-weight: normal;
+	}
+	#feedback  A:visited {
+		color: #66ccff;
+		text-decoration: underline;
+		font-weight: normal;
+	}
+	 
+	html, body, #map {
+		padding:0;
+		margin:0;
+		height:100%;
+		position:relative;
+	}
+	#search {
+		display: block;
+		position: absolute;
+		z-index: 2;
+		top: 113px;
+		left: 74px;
+	}
+	#checkboxes {
+		display: block;
+		position: absolute;
+		z-index: 2;
+		top: 180px;
+		left: 20px;
+		background-color: white;
+		border: 1px solid navy;
+		padding: 15px;
+		border-radius: 5px;
+		font-family:Tahoma, Geneva, sans-serif;
+		font-size: 15px;
+	}
+	table th {
+		background-color: rgb(13, 97, 144);
+		color:#fff;
+		text-align:center;
+	}
+  </style>
+  <script src="//js.arcgis.com/3.15/"></script>
+  <script>
+var map;
+var dynamicMap
+
+      require([
+		"esri/map",
+		"esri/InfoTemplate",
+		"esri/layers/ArcGISDynamicMapServiceLayer",
+		"esri/symbols/SimpleFillSymbol",
+		"esri/symbols/SimpleLineSymbol",
+		"esri/tasks/IdentifyTask",
+		"esri/tasks/IdentifyParameters",
+		"esri/dijit/Popup",
+		"dojo/_base/array",
+		"esri/Color",
+		"dojo/dom-construct",
+		"esri/dijit/Search",
+		"dojo/domReady!"
+      ], function (
+		Map, InfoTemplate, ArcGISDynamicMapServiceLayer, SimpleFillSymbol,
+		SimpleLineSymbol, IdentifyTask, IdentifyParameters, Popup,
+		arrayUtils, Color, domConstruct, Search
+	      ) {
+			var identifyTask, identifyParams;
+			var popup = new Popup({
+				fillSymbol: new SimpleFillSymbol(SimpleFillSymbol.STYLE_SOLID,
+					new SimpleLineSymbol(SimpleLineSymbol.STYLE_SOLID,
+					new Color([255, 0, 0]), 2), new Color([255, 255, 0, 0.25]))
+				}, 
+				domConstruct.create("div"));
+
+			map = new Map("map", {
+				basemap: "topo",
+				center: [-122.45,37.76],
+				zoom: 12,
+				showAttribution: false,
+				infoWindow: popup
+			});
+			var search = new Search({
+				map: map
+			}, "search");
+			map.on("load", mapReady);
+
+			var landmarkURL = "http://sfplanninggis.org/arcgis/rest/services/Preservation/LandmarksMap/MapServer";
+			dynamicMap = new ArcGISDynamicMapServiceLayer(landmarkURL, { opacity: 0.8 })
+						
+			//map.addLayer(new ArcGISDynamicMapServiceLayer(poposArtURL, { opacity: 1 }));
+			map.addLayer(dynamicMap);
+			map.infoWindow.resize(360, 400);
+			
+			search.startup();
+			//dynamicMap.setLayerDefinitions(layerDefs)
+	
+
+        function mapReady () {
+		map.on("click", executeIdentifyTask);
+		//create identify tasks and setup parameters
+		identifyTask = new IdentifyTask(landmarkURL);
+
+		identifyParams = new IdentifyParameters();
+		identifyParams.tolerance = 6;
+		identifyParams.returnGeometry = false;
+		identifyParams.layerIds = [0, 1, 2];
+		identifyParams.layerOption = IdentifyParameters.LAYER_OPTION_ALL;
+		identifyParams.width = map.width;
+		identifyParams.height = map.height;
+		
+		//alert(gup('maximized'))
+		if (gup('maximized')=='true') {
+			document.getElementById('maximize').style.visibility = 'hidden'; 
+		}
+        }
+
+        function executeIdentifyTask (event) {
+		identifyParams.geometry = event.mapPoint;
+		identifyParams.mapExtent = map.extent;
+
+		var deferred = identifyTask
+		    .execute(identifyParams)
+		    .addCallback(function (response) {
+			// response is an array of identify result objects
+			// Let's return an array of features.
+			//alert(response)
+			
+			
+			if (response=="") {
+				//if didn't click on a feature hijack the popup contents to change from the default "No information found" message to something more meaningful
+				var x = document.getElementsByClassName("contentPane");
+				var themessage="This location is not a historic landmark. The brightly colored green areas are landmarks, click on them to view information on that landamark."
+				setTimeout(function(){ x[0].innerHTML = themessage; }, 10);
+			}
+			return arrayUtils.map(response, function (result) {
+				var theLandmark=""
+				var theLandmarkStreet=""
+				var theLandmarkDistrict=""
+				var x = document.getElementsByClassName("esriPopup");
+				setTimeout(function(){x[0].style.visibility="block"; }, 10);
+				var feature = result.feature;
+				var layerName = result.layerName;
+				if (layerName=="Landmarks_Individuals") {
+					var theNo=result.feature.attributes["LandmarkNo"]
+					var theName=result.feature.attributes["Name"]
+					var theAddress=result.feature.attributes["Address"]
+					var theLargePhoto=result.feature.attributes["LargePhoto"].replace("http://sfplanninggis.org/Preservation/Landmarks/","")
+					var theThumbnail=result.feature.attributes["Thumbnail"].replace("http://sfplanninggis.org/Preservation/Landmarks/","")
+					var theYrBuilt=result.feature.attributes["YearBuilt"]
+					var theArchitect=result.feature.attributes["Architect"]
+					var theDesigner=result.feature.attributes["Designer"]
+					var theParcel=result.feature.attributes["Parcel"]
+					var theDesignationDoc=result.feature.attributes["DesignationDoc"]
+					var thePIMLink=result.feature.attributes["PIMLink"]
+					
+					
+					theLandmark = "<div style='overflow: none; max-width: 520px; max-height: 420px;'>"
+					theLandmark +="<table align='center' border=0 cellpadding='2px' width=97%>"
+					theLandmark +="<tr><th style='font-weight:bold; background-color:rgb(71,120,56); color:white'>Landmark #" + theNo + "<br>" + theName + "</th></tr>"
+					theLandmark +="<tr><td align='center'>" + theAddress + "</td></tr>"
+					theLandmark +="<tr><td width='300px' height= '210px' align='center'><a target='_blank' href='" + theLargePhoto+ "'><img  width='286px  style='border: #000000 1px solid;' src='" + theThumbnail + "'/></a></td></tr>"
+					theLandmark +="<tr><td><table width=300px border=0>"
+					theLandmark +="<tr><td align='left' style='width:65px; font-size:8pt;'><b>Year Built:</b></td><td align='left' style='font-size:8pt;'>" + theYrBuilt + "</td></tr>"
+					
+					if (theArchitect !="Null" && theArchitect!= null && theArchitect != ""&&  theArchitect!= " ") {
+						theLandmark +="<tr><td align='left' style='width:65px; font-size:8pt;'><b>Architect:</b></td><td align='left' style='font-size:8pt;'>" + theArchitect + "</td></tr>"
+					}
+					if (theDesigner !="Null" && theDesigner!= null && theDesigner != "" &&  theDesigner!= " ") {
+						theLandmark +="<tr><td align='left' style='width:65px; font-size:8pt;'><b>Designer:</b></td><td align='left' style='font-size:8pt;'>" + theDesigner + "</td></tr>"
+					}
+					
+					theLandmark +="<tr><td align='left' style='width:65px; font-size:8pt;'><b>Parcel:</b></td><td align='left' style='font-size:8pt;'>" + theParcel + "</td></tr>"
+					theLandmark +="<tr><td colspan=2 align='left' style='font-size:8pt;'><a target='_blank' href='"+theDesignationDoc+"'>Read Landmark Designation</a></td></tr>"
+					theLandmark +="<tr><td colspan=2 align='left' style='font-size:8pt;'><a target='_blank' href='"+ thePIMLink + "'>View Detailed Property Information</a></td></tr>"
+					theLandmark +="</table></td></tr></table></div>"
+					var landmarkTemplate = new InfoTemplate("",theLandmark);
+					landmarkTemplate.setTitle("&nbsp;")
+						
+					feature.setInfoTemplate(landmarkTemplate);
+					return feature;
+				}
+				
+				if (layerName=="Landmarks_Streets") {
+					var theNo=result.feature.attributes["LandmarkNo"]
+					var theName=result.feature.attributes["Name"]
+					var theLargePhoto=result.feature.attributes["LargePhoto"].replace("http://sfplanninggis.org/Preservation/Landmarks/","")
+					var theThumbnail=result.feature.attributes["Thumbnail"].replace("http://sfplanninggis.org/Preservation/Landmarks/","")
+					var theDesignationDoc=result.feature.attributes["DesignationDoc"]
+					
+					theLandmarkStreet = "<div style='overflow: none; max-width: 520px; max-height: 420px;'>"
+					theLandmarkStreet += "<table align='center' border=0 cellpadding='2px' width=97%>"
+					theLandmarkStreet += "<tr><th style='font-weight:bold; background-color:rgb(71,120,56); color:white'>Landmark #" + theNo + "<br>" + theName + "</th></tr>"
+					theLandmarkStreet += "<tr><td align='center'>  </td></tr> <tr><td align='center' height='290px'><a target='_blank' href = '" + theLargePhoto+"'><img style='border: #000000 1px solid;' height='290px' src='"+theThumbnail+"'/></a></td></tr> "
+					theLandmarkStreet += "<tr valign=top><td align='left' style='font-size:8pt;'><a target='_blank' href='"+theDesignationDoc+"'>Read Landmark Designation</a></td></tr>"
+					theLandmarkStreet += "</table></div>"
+					
+					var landmarkTemplate = new InfoTemplate("",theLandmarkStreet);
+					landmarkTemplate.setTitle("&nbsp;")
+						
+					feature.setInfoTemplate(landmarkTemplate);
+					return feature;
+				}
+				if (layerName=="Landmark_Districts") {
+					var theName=result.feature.attributes["DistrictName"]
+					var theLargePhoto=result.feature.attributes["LargePhoto"].replace("http://sfplanninggis.org/Preservation/Landmarks/","")
+					var theThumbnail=result.feature.attributes["Thumbnail"].replace("http://sfplanninggis.org/Preservation/Landmarks/","")
+					var theDesignation=result.feature.attributes["Designation"]
+					var theCaseReport=result.feature.attributes["CaseReport"]
+					
+					theLandmarkDistrict="<div style='overflow: none; max-width: 500px; max-height: 400px;'> "
+					theLandmarkDistrict+="<table align='center' border=0 cellpadding='2px' width=97%>"
+					theLandmarkDistrict+="<tr><th style='font-weight:bold; background-color:rgb(71,120,56); color:white'>LANDMARK DISTRICT: <br>" + theName+"</th></tr>"
+					theLandmarkDistrict+="<tr><td align='center'>     </td></tr>"
+					theLandmarkDistrict+="<tr><td align='center' ><a target='_blank' href='" + theLargePhoto+"'><img style='border: #000000 1px solid;' width='270px' src='" + theThumbnail + "'/></a></td></tr>"
+					theLandmarkDistrict+="<tr valign=top><td align='left' style='font-size:8pt;'><a target='_blank' href='" + theDesignation + "'>Read Historic District Designation</a></td></tr>"
+					theLandmarkDistrict+="<tr valign=top><td align='left' style='font-size:8pt;'><a target='_blank' href='" + theCaseReport + "'>Read Historic District Case Report and Ordinance</a></td></tr>"
+					theLandmarkDistrict+="</table></div>"
+					var landmarkTemplate = new InfoTemplate("",theLandmarkDistrict);
+					landmarkTemplate.setTitle("&nbsp;")
+						
+					feature.setInfoTemplate(landmarkTemplate);
+					return feature;
+				}
+				
+				
+			});
+		});
+
+		// InfoWindow expects an array of features from each deferred
+		// object that you pass. If the response from the task execution
+		// above is not an array of features, then you need to add a callback
+		// like the one above to post-process the response and return an
+		// array of features.
+		map.infoWindow.setFeatures([deferred]);
+		map.infoWindow.show(event.mapPoint);
+		 toggleOnOff();
+        }
+	
+      });
+     
+	function toggleOnOff (checkbox) {
+		
+		//alert(document.getElementById(checkbox).checked)
+		var layerDefs = [];
+		for (i=0; i< dynamicMap.layerInfos.length; i++) {
+			if (dynamicMap.layerInfos[i].name == "Art") {
+				//if (checkbox=="PublicArt") {
+				if (document.getElementById('PublicArt').checked) {
+						//Add all to the map
+					layerDefs[dynamicMap.layerInfos[i].id] = "1=1";
+				} else {
+						//Add none to the map
+					layerDefs[dynamicMap.layerInfos[i].id] = "1=0";
+				}
+				//}
+			}
+			
+		}
+		
+		
+		
+	
+	}
+	function gup( thename ){  
+		//Returns paramters from the URL
+		thename = thename.replace(/[\[]/,"\\\[").replace(/[\]]/,"\\\]");  
+		var regexS = "[\\?&]"+thename+"=([^&#]*)";  
+		var regex = new RegExp( regexS );  
+		var results = regex.exec( unescape(window.location.href) );  
+		if( results == null )    return "";  else    return results[1];
+	}
+    
+  </script>
+
+</head>
+<body>
+<div id="wrapper">
+<div id="header">San Francisco Historic Landmarks Map</div>
+<div id="subheader">San Francisco Planning Department &nbsp;
+	
+</div>
+<div id="feedback" > 
+	<table border=0>
+		<tr><td style='width:240px;text-align:center;' ><a href='mailto:mike.wynne@sfgov.org?Subject=Landmarks'>Your Feedback</a><br>Tell us what you think about this map</td><td style='vertical-align: top;'><!--<a target='_blank' href='http://ec2-50-17-237-182.compute-1.amazonaws.com/preservation/NCD/?maximized=true'> <img id='maximize' title='Click to maximize map.' height='20px' src='maximize.png'></a>--></td></tr>
+		<!--<tr><td style='height:25px;text-align:center;'><a target='_blank' href='https://data.sfgov.org/Geographic-Locations-and-Boundaries/Privately-Owned-Public-Open-Space-POPOS-and-Public/55um-v9vc'>Get Map Data</a></td><td></td></tr>-->
+	</table>
+</div>	
+
+<!--
+<div id="checkboxes">
+	Art:<br>
+	&nbsp;&nbsp;<input type="checkbox" title='Check box to add Public Art to the map' id="PublicArt" name="PublicArt" value="PublicArt" checked onclick="javascript: toggleOnOff('PublicArt')"> Public Art<br><div style='height:5px;'></div>
+	POPOS:<br>
+	&nbsp;&nbsp;<input type="checkbox" title='Check box to add all POPOS to the map' id="AllPOPOS" name="AllPOPOS" value="AllPOPOS" checked onclick="javascript: toggleOnOff('AllPOPOS')"> All POPOS<br>
+	&nbsp;&nbsp;<input type="checkbox" title='Check box to map only those POPOS where food is available' id="FoodAvailable" name="FoodAvailable" value="FoodAvailable" unchecked onclick="javascript: toggleOnOff('FoodAvailable')"> Food Available<br>
+	&nbsp;&nbsp;<input type="checkbox" title='Check box to map only those POPOS where restrooms are available' id="RestroomsAvailable" name="RestroomsAvailable" value="RestroomsAvailable" unchecked onclick="javascript: toggleOnOff('RestroomsAvailable')"> Restrooms Available<br>
+	&nbsp;&nbsp;<input type="checkbox" title='Check box to map only those POPOS where tables are available' id="TablesAvailable" name="TablesAvailable" value="TablesAvailable" unchecked onclick="javascript: toggleOnOff('TablesAvailable')"> Tables  & Seating Available<br>
+	&nbsp;&nbsp;<input type="checkbox" title='Check box to map only those POPOS that are open at all times' id="OpenAllTimes" name="OpenAllTimes" value="OpenAllTimes" unchecked onclick="javascript: toggleOnOff('OpenAllTimes')"> Open All Times<br>
+	&nbsp;&nbsp;<input type="checkbox" title='Check box to map only those POPOS that are open only during business hours' id="OpenBusinessHours" name="OpenBusinessHours" value="OpenBusinessHours" unchecked onclick="javascript: toggleOnOff('OpenBusinessHours')"> Open Only Business Hours<br>
+</div>
+-->
+<div id="search"></div>
+
+  <div id="map" class="map">
+    
+  </div>
+</div>
+
+</body>
+</html>
